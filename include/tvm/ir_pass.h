@@ -22,6 +22,63 @@ namespace tvm {
 namespace ir {
 
 /*!
+ * \brief Take the derivative of the expression with respect to the given variable.
+ * \param expr The expression to differentiate.
+ * \param var The variable to differentiate with respect to.
+ * \return The expression for the derivative.
+ */
+EXPORT Expr Derivative(const Expr& expr, const VarExpr& var);
+
+/*!
+ * \brief Get the tensor representing the jacobian of the output with respect to the input.
+ *
+ *  Note that if \p output depends on \p input indirectly (by using some other tensor
+ *  depending on \p input), this dependency won't contribute to the resulting Jacobian.
+ *  For such cases use the function ::JacobianRecursive.
+ *
+ * \param output The tensor to differentiate.
+ * \param input The input tensor, which \p output should directly use.
+ * \param optimize Whether to perform optimizations like lifting of nonzeroness conditions.
+ * \return The tensor representing the Jacobian of shape `output.shape + input.shape`.
+ */
+EXPORT Tensor Jacobian(const Tensor& output, const Tensor& input, bool optimize = true);
+
+/*!
+ * \brief Perform reverse mode automatic differentiation.
+ *
+ *  Each item of the result represents \p head multiplied by the Jacobian of \p output
+ *  with respect to the corresponding item of \p inputs.
+ *
+ *  If the shape of \p output is `[m, n]`, the shape of \p inputs is `[k, l]`, and
+ *  the shape of \p is `[h, m, n]` then the result will have the shape `[h, k, l]`.
+ *
+ * \param output The tensor to differentiate.
+ * \param inputs The input tensors.
+ * \param head Some tensor, by which the Jacobians will be multiplied. Its shape must be of the
+ *        form `[...] + output.shape`.
+ * \param zero_as_nullptr Represent zero tensors in the result as null pointers, used internally.
+ * \return The tensor representing \p head multiplied by the Jacobian.
+ */
+EXPORT Array<Tensor> JacobianRecursive(const Tensor& output,
+                                       const Array<Tensor>& inputs,
+                                       const Tensor& head,
+                                       bool zero_as_nullptr = false);
+
+/*!
+ * \brief Simplify just the combiner of the given reduce node.
+ *
+ *  This function applies Simplify to the components of the top reduction's
+ *  combiner, but not to the source or condition of the reduction.
+ *  By default it also removes all components which are not used to
+ *  compute the resulting value (the value_index-th value).
+ *
+ * \param expr The expression to be simplifed. Must be a reduce expression.
+ * \param prune_unused_components Whether to remove components which are not really used.
+ * \return Simplified expression.
+ */
+EXPORT Expr SimplifyCombiner(const Expr& expr, bool prune_unused_components = true);
+
+/*!
  * \brief Simplify the expression.
  * \param expr The expression to be simplifed.
  * \param vrange The range information about the variable.

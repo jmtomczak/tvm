@@ -14,6 +14,24 @@
 namespace tvm {
 namespace ir {
 
+TVM_REGISTER_API("ir_pass.Jacobian")
+.set_body([](TVMArgs args, TVMRetValue *ret) {
+    if (args.size() > 2) {
+      *ret = Jacobian(args[0], args[1], args[2]);
+    } else {
+      *ret = Jacobian(args[0], args[1]);
+    }
+  });
+
+TVM_REGISTER_API("ir_pass.SimplifyCombiner")
+.set_body([](TVMArgs args, TVMRetValue *ret) {
+    if (args.size() > 1) {
+      *ret = SimplifyCombiner(args[0].operator Expr(), args[1]);
+    } else {
+      *ret = SimplifyCombiner(args[0].operator Expr());
+    }
+  });
+
 TVM_REGISTER_API("ir_pass.Simplify")
 .set_body([](TVMArgs args, TVMRetValue *ret) {
     if (args[0].IsNodeType<Stmt>()) {
@@ -122,6 +140,8 @@ TVM_REGISTER_API("ir_pass.PostOrderVisit")
       *ret = PassName(args[0], args[1], args[2], args[3], args[4]);     \
     })                                                                  \
 
+REGISTER_PASS2(Derivative);
+REGISTER_PASS3(JacobianRecursive);
 REGISTER_PASS1(ConvertSSA);
 REGISTER_PASS1(VerifySSA);
 REGISTER_PASS1(RewriteUnsafeSelect);

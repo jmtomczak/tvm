@@ -720,6 +720,15 @@ Expr Simplify(Expr a, Map<Var, Range> vrange) {
   // and it only appears as the top op in an expression. So we strip it
   // first and send the sub-expressions to the simplifier.
   if (const Reduce* r = a.as<Reduce>()) {
+    // If axis is empty, we can remove the reduce op completely.
+    // Note that here we assume that the identity element is indeed identity.
+    if (r->axis.empty()) {
+      Expr res = Select::make(r->condition,
+                              r->source[r->value_index],
+                              r->combiner->identity_element[r->value_index]);
+      return Simplify_(res, vrange);
+    }
+
     Array<Expr> new_source;
     for (auto& e : r->source) {
       new_source.push_back(Simplify_(e, vrange));

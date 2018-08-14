@@ -216,5 +216,45 @@ Stmt Substitute(Stmt s,
   return ir::Substitute(s, init);
 }
 
+// Note: if the underlying op returns a tuple then we return only a single element of the tuple,
+// and all other elements are discarded
+Tensor TransformBody(const Tensor& tensor,
+                     std::function<Expr (const Expr&, const Array<IterVar>&)> func) {
+  if (const ComputeOpNode* op = tensor->op.as<ComputeOpNode>()) {
+    Array<Expr> new_bodies;
+    int new_value_index = -1;
+
+    // Transform only one body
+    Expr new_body = func(op->body[tensor->value_index], op->axis);
+
+    // If the body didn't change then we can return the same tensor
+    if (new_body.same_as(op->body[tensor->value_index]))
+      return tensor;
+
+    // If this is a reduction then we have to clone its body
+    if (const Reduce* red = new_body.as<Reduce>()) {
+      new_value_index = red->value_index;
+
+      for (size_t i = 0; i < red->source.size(); ++i) {
+        Expr ith_red = Reduce::make(red->combiner, red->source, red->axis, red->condition, i);
+        new_bodies.push_back(ith_red);
+      }
+    }
+    else {
+      new_value_index = 0;
+      new_bodies.push_back(new_body);
+    }
+
+    auto new_op = ComputeOpNode::make(op->name, op->tag, op->attrs, op->axis, new_bodies);
+    return TensorNode::make(tensor->shape, new_bodies[new_value_index].type(),
+                            new_op, new_value_index);
+  } else
+    return tensor;
+}
+
+Tensor TransformBody(const Tensor& tensor, std::function<Expr (const Expr&)> func) {
+  return TransformBody(tensor, [func](const Expr& e, const Array<IterVar>&) { return func(e); });
+}
+
 }  // namespace op
 }  // namespace tvm
