@@ -708,7 +708,7 @@ Array<Tensor> Schedule::rfactor(const Tensor& tensor,
     body.emplace_back(Reduce::make(reduce->combiner,
                                    new_source,
                                    n->reduce_axis,
-                                   predicate,
+                                   likely(predicate),
                                    idx));
   }
   n->body = Array<Expr>(body);
