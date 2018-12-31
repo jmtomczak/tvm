@@ -523,9 +523,8 @@ def schedule_conv2d_winograd_without_weight_transform_(cfg, outs):
 
 ##### REGISTER ALTER OP LAYOUT #####
 @conv2d_alter_layout.register(["arm_cpu"])
-def _alter_conv2d_layout_arm(attrs, inputs, tinfos):
+def _alter_conv2d_layout_arm(attrs, inputs, tinfos, F):
     """Alter op layout for pre-computing kernel transformation"""
-    import nnvm.symbol as sym
     copy_inputs = [s for s in inputs]
 
     new_attrs = {k: attrs[k] for k in attrs.keys()}
@@ -570,7 +569,7 @@ def _alter_conv2d_layout_arm(attrs, inputs, tinfos):
             [new_data, new_kernel, strides, padding, dilation, 'NCHW', out_dtype], conv2d)
         dispatch_ctx.update(target, new_workload, cfg)
 
-        return sym.conv2d(*copy_inputs, **new_attrs)
+        return F.nn.conv2d(*copy_inputs, **new_attrs)
     else:  # pre-compute weight transformation in winograd
         if "-device=arm_cpu" in target.options:
             tile_size = 4
@@ -580,10 +579,10 @@ def _alter_conv2d_layout_arm(attrs, inputs, tinfos):
             tile_size = _pick_tile_size(tinfos[0], tinfos[1])
             VC = cfg['tile_bna'].val
 
-        weight = sym.contrib.conv2d_winograd_weight_transform(copy_inputs[1], tile_size=tile_size)
-        weight = sym.reshape(weight,
-                             shape=(KH + tile_size - 1, KW + tile_size - 1, CO // VC, VC, CI))
-        weight = sym.transpose(weight, axes=[0, 1, 2, 4, 3])
+        weight = F.nn.contrib.conv2d_winograd_weight_transform(copy_inputs[1], tile_size=tile_size)
+        weight = F.reshape(weight,
+                           shape=(KH + tile_size - 1, KW + tile_size - 1, CO // VC, VC, CI))
+        weight = F.transpose(weight, axes=[0, 1, 2, 4, 3])
 
         copy_inputs[1] = weight
         new_attrs['tile_size'] = tile_size
@@ -598,4 +597,4 @@ def _alter_conv2d_layout_arm(attrs, inputs, tinfos):
             conv2d_winograd_without_weight_transform)
         dispatch_ctx.update(target, new_workload, cfg)
 
-        return sym.contrib.conv2d_winograd_without_weight_transform(*copy_inputs, **new_attrs)
+        return F.nn.contrib.conv2d_winograd_without_weight_transform(*copy_inputs, **new_attrs)

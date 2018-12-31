@@ -1,11 +1,12 @@
 # pylint: disable=no-else-return, unidiomatic-typecheck, invalid-name, unused-argument
 """Convert an NNVM graph to Relay."""
 import json
+import numpy
+
 from tvm import relay, nd
 from tvm.relay import op, expr, var
 from tvm.relay.frontend.common import StrAttrsDict
 from tvm.relay.frontend.nnvm_common import _rename
-import numpy
 from .symbol import Symbol
 from .compiler import graph_attr
 from .graph import create as graph_create
